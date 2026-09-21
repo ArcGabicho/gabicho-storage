@@ -2,7 +2,7 @@
 
 ## Modelo de permisos
 
-Idéntico al de la versión en Go: cada **API key** pertenece a un `user_id`
+Cada **API key** pertenece a un `user_id`
 (string libre) y tiene permisos `read`/`write`/`admin` (comma-separated,
 `admin` implica los otros dos). Los **buckets** y **archivos** tienen un
 flag `is_public` independiente. La administración de API keys
@@ -11,7 +11,7 @@ flag `is_public` independiente. La administración de API keys
 
 ## Ejemplos de uso de la API
 
-Idénticos a la versión en Go (mismo contrato JSON snake_case):
+Contrato JSON en snake_case:
 
 ```bash
 export API_BASE=http://localhost:8080
@@ -47,7 +47,7 @@ curl -X DELETE "$API_BASE/api/avatares/<filename>" -H "X-API-Key: $API_KEY"
 
 ## Uso desde un frontend Next.js en Vercel
 
-Misma recomendación que la versión en Go: proxear las requests desde un
+Se recomienda proxear las requests desde un
 Route Handler de Next.js (server-side) para que la API key nunca llegue al
 browser, ya que `Cross-Origin-Resource-Policy: cross-origin` está
 habilitado explícitamente para permitir que un frontend en otro origen
