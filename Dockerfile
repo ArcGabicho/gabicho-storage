@@ -1,34 +1,34 @@
 # --- Etapa de build ---
-FROM golang:1.26-alpine AS builder
-
-RUN apk add --no-cache git ca-certificates
-
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS builder
 WORKDIR /src
 
-COPY go.mod go.sum ./
-RUN go mod download
+COPY src/GabichoStorage.Api/GabichoStorage.Api.csproj src/GabichoStorage.Api/
+RUN dotnet restore src/GabichoStorage.Api/GabichoStorage.Api.csproj
 
-COPY . .
+COPY src/GabichoStorage.Api/ src/GabichoStorage.Api/
+RUN dotnet publish src/GabichoStorage.Api/GabichoStorage.Api.csproj \
+    -c Release -o /out --no-restore
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/gabicho-storage .
+# --- Etapa final (runtime ASP.NET, sin SDK) ---
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 
-# --- Etapa final (imagen mínima) ---
-FROM alpine:3.20
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apk add --no-cache ca-certificates tzdata wget && \
-    addgroup -S app && adduser -S app -G app
-
+# La imagen base ya trae un usuario no-root "app" (uid 1654) para esto.
 WORKDIR /app
-
-COPY --from=builder /out/gabicho-storage .
+COPY --from=builder /out .
 
 RUN mkdir -p /data/storage && chown -R app:app /data /app
 
 USER app
 
 EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DOTNET_EnableDiagnostics=0
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -qO- http://localhost:8080/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD ["curl", "-f", "http://localhost:8080/health"]
 
-ENTRYPOINT ["./gabicho-storage"]
+ENTRYPOINT ["dotnet", "GabichoStorage.Api.dll"]

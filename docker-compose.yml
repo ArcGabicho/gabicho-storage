@@ -1,5 +1,5 @@
 services:
-  storage:
+  api:
     build:
       context: .
       dockerfile: Dockerfile
@@ -8,28 +8,25 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     environment:
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_USER: ${DB_USER:-storage}
+      DB_HOST: sqlserver
+      DB_PORT: "1433"
+      DB_USER: sa
       DB_NAME: ${DB_NAME:-storage}
-      DB_SSLMODE: ${DB_SSLMODE:-disable}
+      DB_ENCRYPT: "false"
+      DB_TRUST_SERVER_CERTIFICATE: "true"
       STORAGE_PATH: /data/storage
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-500}
-      API_PORT: "8080"
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       TOKEN_EXPIRY_MINUTES: ${TOKEN_EXPIRY_MINUTES:-15}
       API_RATE_LIMIT_MAX: ${API_RATE_LIMIT_MAX:-300}
       API_RATE_LIMIT_WINDOW_SECONDS: ${API_RATE_LIMIT_WINDOW_SECONDS:-60}
       UPLOAD_RATE_LIMIT_MAX: ${UPLOAD_RATE_LIMIT_MAX:-30}
       UPLOAD_RATE_LIMIT_WINDOW_SECONDS: ${UPLOAD_RATE_LIMIT_WINDOW_SECONDS:-60}
-      ENVIRONMENT: ${ENVIRONMENT:-production}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       # Los tres valores sensibles se leen de archivos (Docker secrets, ver
-      # bloque "secrets" al final de este archivo) en vez de pasarse en texto
-      # plano acá: un valor puesto directo en `environment:` queda visible
-      # para siempre en `docker inspect <container>` y en
-      # `docker compose config` -- ambos comandos accesibles a cualquiera
-      # con acceso al socket de Docker en el host. Los archivos montados vía
-      # `secrets:` en cambio no aparecen en ninguno de los dos.
+      # bloque "secrets" al final) en vez de pasarse en texto plano acá: un
+      # valor puesto directo en `environment:` queda visible para siempre
+      # en `docker inspect <container>` y en `docker compose config`.
       DB_PASSWORD_FILE: /run/secrets/db_password
       SIGNING_SECRET_FILE: /run/secrets/signing_secret
       ADMIN_MASTER_KEY_FILE: /run/secrets/admin_master_key
@@ -40,50 +37,51 @@ services:
     volumes:
       - storage_data:/data/storage
     depends_on:
-      postgres:
+      sqlserver:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
     networks:
       - storage_net
 
-  postgres:
-    image: postgres:15-alpine
+  sqlserver:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
     container_name: gabicho-storage-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER:-storage}
-      POSTGRES_DB: ${DB_NAME:-storage}
-      # La imagen oficial de postgres soporta nativamente _FILE para no
-      # tener que pasar el password por `environment:` (mismo motivo que
-      # arriba). Usa el MISMO secreto "db_password" que el servicio storage,
-      # así ambos quedan sincronizados con un solo archivo.
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Express
+      # La imagen oficial no soporta _FILE nativamente; el wrapper en
+      # db/entrypoint-secrets.sh sí (lee este archivo y exporta
+      # MSSQL_SA_PASSWORD antes de arrancar SQL Server).
+      MSSQL_SA_PASSWORD_FILE: /run/secrets/db_password
     secrets:
       - db_password
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mssql_data:/var/opt/mssql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-storage} -d ${DB_NAME:-storage}"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$(cat /run/secrets/db_password)\" -C -Q 'SELECT 1' || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 10
+      start_period: 30s
     networks:
       - storage_net
-    # No se publica el puerto 5432 al host: sólo es accesible desde la red
-    # interna de docker-compose (el servicio "storage").
+    # No se publica el puerto 1433 al host: sólo es accesible desde la red
+    # interna de docker-compose (el servicio "api").
 
 networks:
   storage_net:
     driver: bridge
 
 volumes:
-  postgres_data:
+  mssql_data:
   storage_data:
 
 # Docker secrets basados en archivo (no requiere Swarm, funciona con
