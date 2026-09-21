@@ -1,7 +1,7 @@
 # Seguridad y cumplimiento OWASP Top 10 (2021)
 
-Migración de las mismas mitigaciones documentadas para la versión en Go,
-adaptadas a los mecanismos concretos de ASP.NET Core/EF Core/SQL Server.
+Mitigaciones implementadas mediante los mecanismos concretos de ASP.NET
+Core/EF Core/SQL Server.
 
 ## A01:2021 — Broken Access Control
 
@@ -27,13 +27,12 @@ adaptadas a los mecanismos concretos de ASP.NET Core/EF Core/SQL Server.
   secreto (`BCrypt.Net-Next`), nunca el id. Formato `sk_<guid>_<secret>`.
 - La comparación de la master key usa
   `CryptographicOperations.FixedTimeEquals` (`Auth/MasterKeyAuthAttribute.cs`),
-  el equivalente exacto de `crypto/subtle.ConstantTimeCompare` de Go, para
-  no filtrar nada por timing side-channel.
+  para no filtrar nada por timing side-channel.
 - Los tokens presignados usan `HMACSHA256` (`Services/TokenSigner.cs`) y se
   validan con `CryptographicOperations.FixedTimeEquals`, no con `==`.
 - TLS lo termina Cloudflare en el borde (Cloudflare Tunnel).
-- **Riesgo aceptado**: igual que la versión Go, no hay rotación automática
-  de `SIGNING_SECRET`/`ADMIN_MASTER_KEY`.
+- **Riesgo aceptado**: no hay rotación automática de
+  `SIGNING_SECRET`/`ADMIN_MASTER_KEY`.
 
 ## A03:2021 — Injection
 
@@ -45,8 +44,7 @@ adaptadas a los mecanismos concretos de ASP.NET Core/EF Core/SQL Server.
   (`Services/MimeValidator.ExtensionForMimeType`), nunca del nombre que
   mandó el cliente. `Services/FilenameSanitizer.cs` sanitiza el nombre
   "original" (sólo metadata para mostrar).
-- **XSS almacenado vía upload disfrazado**: mismo problema, misma mitigación
-  en dos capas que la versión Go:
+- **XSS almacenado vía upload disfrazado**: mitigado en dos capas:
   1. **Content sniffing en upload**: se leen los primeros 512 bytes reales
      y se rechaza (`415`) si el contenido es HTML
      (`MimeValidator.LooksLikeHtml`), aunque el `Content-Type` declarado
@@ -57,8 +55,8 @@ adaptadas a los mecanismos concretos de ASP.NET Core/EF Core/SQL Server.
      (`Middleware/SecurityHeadersMiddleware.cs`), neutralizando la
      ejecución de script aunque el contenido sea un SVG legítimo con
      `<script>` embebido.
-- **Riesgo aceptado**: igual que en Go, no hay validación completa de magic
-  bytes por formato, sólo el descarte de HTML disfrazado.
+- **Riesgo aceptado**: no hay validación completa de magic bytes por
+  formato, sólo el descarte de HTML disfrazado.
 
 ## A04:2021 — Insecure Design
 
@@ -126,8 +124,7 @@ adaptadas a los mecanismos concretos de ASP.NET Core/EF Core/SQL Server.
   entropía) es lo único hasheado y verificado con bcrypt.
 - Un id que no parsea como GUID válido (`ApiKeyGenerator.ParseId`) se
   rechaza antes de tocar la base, devolviendo 401/404 en vez de que EF Core
-  lance una excepción de conversión que terminaría en un 500 -- mismo fix
-  que se hizo en la versión Go tras encontrar el problema ahí.
+  lance una excepción de conversión que terminaría en un 500.
 - Emisión/listado/revocación de API keys detrás de master key separada.
 - Rate limiting general sobre `/api/*` (incluye los endpoints de auth)
   dificulta fuerza bruta.
@@ -140,8 +137,8 @@ adaptadas a los mecanismos concretos de ASP.NET Core/EF Core/SQL Server.
   persiste como JSON de vuelta sin ejecutarse ni interpretarse como código.
 - Build multi-stage desde código fuente propio, sin binarios
   pre-compilados de terceros.
-- **Riesgo aceptado**: igual que en Go, los tags de imagen base no están
-  fijados por digest.
+- **Riesgo aceptado**: los tags de imagen base no están fijados por
+  digest.
 
 ## A09:2021 — Security Logging and Monitoring Failures
 
@@ -150,9 +147,7 @@ adaptadas a los mecanismos concretos de ASP.NET Core/EF Core/SQL Server.
   método, path, status, latencia, IP real, `user_id` si hay API key
   autenticada. El status logueado se toma de `context.Response.StatusCode`
   DESPUÉS de que `next()` retorna -- en ASP.NET Core esto sí refleja el
-  código real incluso cuando un filtro de autorización cortó la request
-  (a diferencia del bug que hubo que corregir en la versión Go, donde el
-  framework escribía el status recién DESPUÉS del middleware de logging).
+  código real incluso cuando un filtro de autorización cortó la request.
 - Acciones administrativas sensibles generan una línea de log explícita:
   creación de API key (`AuthController.Create`), revocación
   (`AuthController.Revoke`), eliminación de bucket
