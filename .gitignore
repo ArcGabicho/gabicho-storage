@@ -1,0 +1,5 @@
+.env
+/gabicho-storage
+/data/
+*.log
+/secrets/

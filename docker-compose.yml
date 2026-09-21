@@ -1,0 +1,101 @@
+services:
+  storage:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gabicho-storage-api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER:-storage}
+      DB_NAME: ${DB_NAME:-storage}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
+      STORAGE_PATH: /data/storage
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-500}
+      API_PORT: "8080"
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      TOKEN_EXPIRY_MINUTES: ${TOKEN_EXPIRY_MINUTES:-15}
+      API_RATE_LIMIT_MAX: ${API_RATE_LIMIT_MAX:-300}
+      API_RATE_LIMIT_WINDOW_SECONDS: ${API_RATE_LIMIT_WINDOW_SECONDS:-60}
+      UPLOAD_RATE_LIMIT_MAX: ${UPLOAD_RATE_LIMIT_MAX:-30}
+      UPLOAD_RATE_LIMIT_WINDOW_SECONDS: ${UPLOAD_RATE_LIMIT_WINDOW_SECONDS:-60}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      # Los tres valores sensibles se leen de archivos (Docker secrets, ver
+      # bloque "secrets" al final de este archivo) en vez de pasarse en texto
+      # plano acá: un valor puesto directo en `environment:` queda visible
+      # para siempre en `docker inspect <container>` y en
+      # `docker compose config` -- ambos comandos accesibles a cualquiera
+      # con acceso al socket de Docker en el host. Los archivos montados vía
+      # `secrets:` en cambio no aparecen en ninguno de los dos.
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      SIGNING_SECRET_FILE: /run/secrets/signing_secret
+      ADMIN_MASTER_KEY_FILE: /run/secrets/admin_master_key
+    secrets:
+      - db_password
+      - signing_secret
+      - admin_master_key
+    volumes:
+      - storage_data:/data/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - storage_net
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: gabicho-storage-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-storage}
+      POSTGRES_DB: ${DB_NAME:-storage}
+      # La imagen oficial de postgres soporta nativamente _FILE para no
+      # tener que pasar el password por `environment:` (mismo motivo que
+      # arriba). Usa el MISMO secreto "db_password" que el servicio storage,
+      # así ambos quedan sincronizados con un solo archivo.
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-storage} -d ${DB_NAME:-storage}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - storage_net
+    # No se publica el puerto 5432 al host: sólo es accesible desde la red
+    # interna de docker-compose (el servicio "storage").
+
+networks:
+  storage_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  storage_data:
+
+# Docker secrets basados en archivo (no requiere Swarm, funciona con
+# `docker compose` normal): cada archivo se monta de sólo lectura en
+# /run/secrets/<nombre> dentro del contenedor. Generarlos con
+# scripts/generate-secrets.sh, o a mano con `openssl rand -hex 32 > secrets/<archivo>`.
+# El directorio secrets/ está en .gitignore: estos archivos NUNCA deben
+# commitearse.
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  signing_secret:
+    file: ./secrets/signing_secret.txt
+  admin_master_key:
+    file: ./secrets/admin_master_key.txt
