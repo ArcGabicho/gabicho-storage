@@ -23,27 +23,28 @@ contrato JSON (snake_case) y las mismas propiedades de seguridad -- ver
 ```
 .
 ├── GabichoStorage.slnx
-├── docker-compose.yml         # Stack: API + SQL Server
-├── Dockerfile                  # Build multi-stage (SDK -> runtime ASP.NET)
-├── db/                         # Wrapper de la imagen oficial de SQL Server
-│   ├── Dockerfile              #   con soporte de Docker secrets (_FILE)
-│   └── entrypoint-secrets.sh
-├── .env.example                # Config no sensible
-├── SECURITY.md                 # Mapeo detallado contra OWASP Top 10
-├── src/GabichoStorage.Api/
-│   ├── Program.cs              # Bootstrap: opciones, DB, middlewares, rutas
-│   ├── Options/                # StorageOptions (config + secretos), naming policy JSON
-│   ├── Entities/                # Bucket, FileObject, ApiKey (+ EF Core config en Data/)
-│   ├── Data/                    # AppDbContext, migraciones EF Core
-│   ├── Dtos/                    # Request/response records
-│   ├── Services/                # TokenSigner, ApiKeyGenerator, MimeValidator,
-│   │                            #   FilenameSanitizer, LocalFileStorage, ApiKeyAuthenticator
-│   ├── Auth/                    # Filtros de autenticación/autorización (API key, master key, permisos)
-│   ├── Middleware/              # Security headers, IP real detrás de Cloudflare, logging
-│   └── Controllers/             # BucketsController, FilesController, AuthController
-├── tests/GabichoStorage.Tests/
-│   ├── Unit/                    # Sin dependencias externas
-│   └── Integration/             # WebApplicationFactory contra SQL Server real
+├── docker/
+│   ├── docker-compose.yml      # Stack: API + SQL Server (contexto de build = raíz del repo)
+│   ├── Dockerfile               # Build multi-stage (SDK -> runtime ASP.NET)
+│   └── database/                # Wrapper de la imagen oficial de SQL Server
+│       ├── Dockerfile           #   con soporte de Docker secrets (_FILE)
+│       └── entrypoint-secrets.sh
+├── .env.example                 # Config no sensible
+├── SECURITY.md                  # Mapeo detallado contra OWASP Top 10
+├── core/
+│   ├── Program.cs               # Bootstrap: opciones, DB, middlewares, rutas
+│   ├── Options/                 # StorageOptions (config + secretos), naming policy JSON
+│   ├── Entities/                 # Bucket, FileObject, ApiKey (+ EF Core config en Data/)
+│   ├── Data/                     # AppDbContext, migraciones EF Core
+│   ├── Dtos/                     # Request/response records
+│   ├── Services/                 # TokenSigner, ApiKeyGenerator, MimeValidator,
+│   │                             #   FilenameSanitizer, LocalFileStorage, ApiKeyAuthenticator
+│   ├── Auth/                     # Filtros de autenticación/autorización (API key, master key, permisos)
+│   ├── Middleware/               # Security headers, IP real detrás de Cloudflare, logging
+│   └── Controllers/              # BucketsController, FilesController, AuthController
+├── test/
+│   ├── Unit/                     # Sin dependencias externas
+│   └── Integration/              # WebApplicationFactory contra SQL Server real
 └── scripts/generate-secrets.sh
 ```
 
@@ -58,10 +59,14 @@ flag `is_public` independiente. La administración de API keys
 
 ## Levantar en local
 
+Todos los comandos `docker compose` de esta guía se corren desde la raíz
+del repo, pasando explícitamente el compose file (`docker/docker-compose.yml`
+tiene su build context apuntando a la raíz para poder acceder a `core/`).
+
 ```bash
 cp .env.example .env
 ./scripts/generate-secrets.sh   # genera secrets/{db_password,signing_secret,admin_master_key}.txt
-docker compose up -d --build
+docker compose -f docker/docker-compose.yml up -d --build
 curl http://localhost:8080/health
 ```
 
@@ -71,7 +76,7 @@ docker-compose monta como [Docker
 secrets](https://docs.docker.com/compose/how-tos/use-secrets/), para que
 nunca queden en texto plano en `docker inspect` ni en `docker compose
 config`. La imagen oficial de SQL Server no soporta esa convención
-nativamente (a diferencia de Postgres/MySQL); `db/entrypoint-secrets.sh` se
+nativamente (a diferencia de Postgres/MySQL); `docker/database/entrypoint-secrets.sh` se
 la agrega.
 
 > **Nota**: `db_password` (usado como password de `sa`) se genera con
@@ -181,8 +186,8 @@ cd gabicho-storage
 cp .env.example .env
 chmod +x scripts/generate-secrets.sh
 ./scripts/generate-secrets.sh
-docker compose up -d --build
-docker compose ps          # ambos servicios deben quedar "healthy"
+docker compose -f docker/docker-compose.yml up -d --build
+docker compose -f docker/docker-compose.yml ps   # ambos servicios deben quedar "healthy"
 curl http://localhost:8080/health
 ```
 
@@ -222,19 +227,19 @@ curl https://storage.tu-dominio.com/health
 ### 4. Monitoreo y actualización
 
 ```bash
-docker compose logs -f api          # logs JSON estructurados
-docker compose logs -f sqlserver
+docker compose -f docker/docker-compose.yml logs -f api          # logs JSON estructurados
+docker compose -f docker/docker-compose.yml logs -f sqlserver
 sudo journalctl -u cloudflared -f
 
 # actualizar:
-git pull && docker compose up -d --build
+git pull && docker compose -f docker/docker-compose.yml up -d --build
 ```
 
 ### Backups
 
 ```bash
-docker run --rm -v gabicho-storage-dotnet_mssql_data:/data -v "$PWD":/backup \
+docker run --rm -v gabicho-storage_mssql_data:/data -v "$PWD":/backup \
   alpine tar czf /backup/mssql-$(date +%F).tar.gz -C /data .
-docker run --rm -v gabicho-storage-dotnet_storage_data:/data -v "$PWD":/backup \
+docker run --rm -v gabicho-storage_storage_data:/data -v "$PWD":/backup \
   alpine tar czf /backup/files-$(date +%F).tar.gz -C /data .
 ```

@@ -1,8 +1,8 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/GabichoStorage.Api/GabichoStorage.Api.csproj" />
+  <Folder Name="/core/">
+    <Project Path="core/GabichoStorage.Api.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/GabichoStorage.Tests/GabichoStorage.Tests.csproj" />
+    <Project Path="test/GabichoStorage.Tests.csproj" />
   </Folder>
 </Solution>

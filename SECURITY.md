@@ -93,7 +93,7 @@ adaptadas a los mecanismos concretos de ASP.NET Core/EF Core/SQL Server.
   tres secretos se pasan como Docker secrets basados en archivo, montados
   en `/run/secrets/<nombre>`. `StorageOptions.GetSecret()` soporta la
   convención `<VAR>_FILE`. La imagen oficial de SQL Server NO soporta esto
-  nativamente (a diferencia de Postgres/MySQL) -- `db/entrypoint-secrets.sh`
+  nativamente (a diferencia de Postgres/MySQL) -- `docker/database/entrypoint-secrets.sh`
   se lo agrega mediante un wrapper que exporta `MSSQL_SA_PASSWORD` desde
   `MSSQL_SA_PASSWORD_FILE` antes de invocar el entrypoint real de la imagen.
 - El contenedor de la API corre como el usuario no-root que ya trae la
@@ -176,7 +176,7 @@ adaptadas a los mecanismos concretos de ASP.NET Core/EF Core/SQL Server.
 | 1 | El rate limiter de ASP.NET Core devuelve `503` por default, no `429` | `RateLimiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests` |
 | 2 | `InvariantGlobalization=true` rompe `Microsoft.Data.SqlClient` (`NotSupportedException` al abrir conexión) | No activar esa propiedad en el `.csproj` |
 | 3 | `openssl rand -hex 32` no cumple la política de complejidad de password de SQL Server (sólo 2 de 4 clases de caracteres) | `openssl rand -base64 32` para `db_password` específicamente |
-| 4 | La imagen oficial de SQL Server no soporta `_FILE` para el password de `sa` | Wrapper de entrypoint (`db/entrypoint-secrets.sh`) que lo agrega |
+| 4 | La imagen oficial de SQL Server no soporta `_FILE` para el password de `sa` | Wrapper de entrypoint (`docker/database/entrypoint-secrets.sh`) que lo agrega |
 | 5 | `IClassFixture<T>` de xUnit exige un único constructor público y no considera defaults de C# al resolver argumentos | Fixture con constructor parameterless + propiedades mutables para customización |
 | 6 | Tests que mutan variables de entorno del proceso se pisaban entre sí al correr en paralelo (xUnit paraleliza test classes por default) | Todos agrupados en una `[CollectionDefinition(DisableParallelization = true)]` compartida |
 | 7 | El constructor de una clase de test llamaba `CreateClient()` (dispara el arranque completo del host) antes de que `Skip.IfNot()` pudiera evaluarse, rompiendo el skip limpio sin DB de test configurada | Diferir `CreateClient()` detrás del mismo chequeo de disponibilidad |

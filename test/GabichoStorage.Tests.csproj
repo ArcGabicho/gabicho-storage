@@ -30,7 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\GabichoStorage.Api\GabichoStorage.Api.csproj" />
+    <ProjectReference Include="..\core\GabichoStorage.Api.csproj" />
   </ItemGroup>
 
 </Project>

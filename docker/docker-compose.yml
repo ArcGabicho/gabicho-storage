@@ -1,8 +1,15 @@
+# Nombre de proyecto explícito: sin esto, Compose lo infiere del nombre del
+# directorio que contiene este archivo ("docker"), lo que prefijaría
+# volúmenes/redes como "docker_..." en vez de algo reconocible.
+name: gabicho-storage
+
 services:
   api:
     build:
-      context: .
-      dockerfile: Dockerfile
+      # Contexto = raíz del repo (no "docker/"): el Dockerfile necesita
+      # poder hacer COPY de "core/", que es hermano de este directorio.
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: gabicho-storage-api
     restart: unless-stopped
     ports:
@@ -50,7 +57,7 @@ services:
 
   sqlserver:
     build:
-      context: ./db
+      context: ./database
       dockerfile: Dockerfile
     container_name: gabicho-storage-db
     restart: unless-stopped
@@ -58,7 +65,7 @@ services:
       ACCEPT_EULA: "Y"
       MSSQL_PID: Express
       # La imagen oficial no soporta _FILE nativamente; el wrapper en
-      # db/entrypoint-secrets.sh sí (lee este archivo y exporta
+      # database/entrypoint-secrets.sh sí (lee este archivo y exporta
       # MSSQL_SA_PASSWORD antes de arrancar SQL Server).
       MSSQL_SA_PASSWORD_FILE: /run/secrets/db_password
     secrets:
@@ -92,8 +99,8 @@ volumes:
 # commitearse.
 secrets:
   db_password:
-    file: ./secrets/db_password.txt
+    file: ../secrets/db_password.txt
   signing_secret:
-    file: ./secrets/signing_secret.txt
+    file: ../secrets/signing_secret.txt
   admin_master_key:
-    file: ./secrets/admin_master_key.txt
+    file: ../secrets/admin_master_key.txt

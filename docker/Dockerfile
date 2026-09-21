@@ -2,11 +2,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS builder
 WORKDIR /src
 
-COPY src/GabichoStorage.Api/GabichoStorage.Api.csproj src/GabichoStorage.Api/
-RUN dotnet restore src/GabichoStorage.Api/GabichoStorage.Api.csproj
+COPY core/GabichoStorage.Api.csproj core/
+RUN dotnet restore core/GabichoStorage.Api.csproj
 
-COPY src/GabichoStorage.Api/ src/GabichoStorage.Api/
-RUN dotnet publish src/GabichoStorage.Api/GabichoStorage.Api.csproj \
+COPY core/ core/
+RUN dotnet publish core/GabichoStorage.Api.csproj \
     -c Release -o /out --no-restore
 
 # --- Etapa final (runtime ASP.NET, sin SDK) ---
