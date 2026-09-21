@@ -1,8 +1,8 @@
 namespace GabichoStorage.Api.Middleware;
 
 /// <summary>
-/// Headers de seguridad globales (equivalente al middleware "helmet" de la
-/// versión en Go/Fiber). CrossOriginResourcePolicy queda explícitamente
+/// Headers de seguridad globales (equivalente al middleware "helmet" de
+/// Express/otros frameworks). CrossOriginResourcePolicy queda explícitamente
 /// "cross-origin" (no "same-origin", que sería el default recomendado en
 /// general) porque este servicio está pensado para que un frontend en otro
 /// origen (ej. Next.js en Vercel) embeba imágenes/videos vía

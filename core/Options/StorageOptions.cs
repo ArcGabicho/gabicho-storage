@@ -5,7 +5,7 @@ namespace GabichoStorage.Api.Options;
 /// <summary>
 /// Configuración runtime del servicio, cargada desde variables de entorno
 /// (con soporte opcional de un archivo .env para desarrollo local, vía
-/// DotNetEnv). Equivalente a config.Config de la versión en Go.
+/// DotNetEnv).
 /// </summary>
 public class StorageOptions
 {

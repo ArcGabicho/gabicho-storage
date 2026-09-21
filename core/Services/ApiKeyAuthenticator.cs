@@ -31,8 +31,7 @@ public class ApiKeyAuthenticator(AppDbContext db, IServiceScopeFactory scopeFact
             return null;
         }
 
-        // Fire-and-forget, igual que el "go func(){...}()" de la versión Go:
-        // no debe bloquear ni fallar la request por esto.
+        // Fire-and-forget: no debe bloquear ni fallar la request por esto.
         _ = TouchLastUsedAsync(key.Id);
 
         return key;
@@ -44,9 +43,8 @@ public class ApiKeyAuthenticator(AppDbContext db, IServiceScopeFactory scopeFact
         {
             // No se puede reusar el DbContext inyectado (scoped a esta
             // request): para cuando termine esta tarea en background, ya
-            // pudo haber sido dispuesto. Se crea un scope propio, igual que
-            // el "go func(){...}()" de la versión Go corre en su propia
-            // goroutine con su propia conexión del pool.
+            // pudo haber sido dispuesto. Se crea un scope propio con su
+            // propia conexión del pool.
             using var scope = scopeFactory.CreateScope();
             var scopedDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             await scopedDb.ApiKeys

@@ -5,9 +5,8 @@ namespace GabichoStorage.Api.Options;
 
 /// <summary>
 /// Convierte PascalCase/camelCase a snake_case para el JSON de la API,
-/// manteniendo el mismo contrato (user_id, is_public, created_at, ...) que
-/// tenía la versión original en Go, así un frontend existente no necesita
-/// cambios al migrar el backend.
+/// manteniendo un contrato consistente (user_id, is_public, created_at, ...)
+/// para los clientes que la consumen.
 /// </summary>
 public class SnakeCaseNamingPolicy : JsonNamingPolicy
 {

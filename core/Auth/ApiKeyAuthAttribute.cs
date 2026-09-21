@@ -10,7 +10,6 @@ namespace GabichoStorage.Api.Auth;
 /// "Authorization: Bearer &lt;key&gt;") y la deja disponible vía
 /// HttpContext.GetApiKey() para el resto de la request (el propio action y
 /// filtros posteriores como <see cref="RequirePermissionAttribute"/>).
-/// Equivalente a middleware.APIKeyAuth de la versión en Go.
 /// </summary>
 public class ApiKeyAuthAttribute : Attribute, IAsyncAuthorizationFilter, IOrderedFilter
 {

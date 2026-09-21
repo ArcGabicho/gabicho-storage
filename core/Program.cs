@@ -74,7 +74,7 @@ builder.Services.AddCors(o =>
 builder.Services.AddRateLimiter(o =>
 {
     // El default de ASP.NET Core es 503; el estándar para "excediste el
-    // rate limit" (y lo que devolvía la versión en Go) es 429.
+    // rate limit" es 429.
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     o.OnRejected = async (context, ct) =>
@@ -109,8 +109,8 @@ builder.Services.AddRateLimiter(o =>
 
 builder.Services.AddControllers().AddJsonOptions(o =>
 {
-    // snake_case (user_id, is_public, created_at, ...) para mantener el
-    // mismo contrato que tenía la versión original en Go.
+    // snake_case (user_id, is_public, created_at, ...) para mantener un
+    // contrato JSON consistente en toda la API.
     o.JsonSerializerOptions.PropertyNamingPolicy = new SnakeCaseNamingPolicy();
     o.JsonSerializerOptions.DictionaryKeyPolicy = null; // no tocar las keys de "metadata", son datos de usuario
 });
