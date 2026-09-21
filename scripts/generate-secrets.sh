@@ -40,4 +40,4 @@ generate admin_master_key.txt "$(openssl rand -hex 32)"
 
 echo
 echo "Listo. Estos archivos NUNCA deben commitearse (ya están en .gitignore)."
-echo "Para levantar el stack: docker compose up -d --build"
+echo "Para levantar el stack: docker compose -f docker/docker-compose.yml up -d --build"
